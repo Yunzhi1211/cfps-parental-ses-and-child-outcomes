@@ -16,15 +16,12 @@ This repository contains comprehensive analytical code and documentation for a l
 
 ### 1. **Intelligent Multi-Wave Panel Construction with Rigorous Validation**
 
-**Key Features:**
 - Systematically integrated CFPS data from **7 survey waves** (2010, 2012, 2014, 2016, 2018, 2020, 2022)
 - **Automatic negative-code conversion**: Implemented sweeping logic converting all negative values to missing (excluding ID/time variables)
 - **Wave-year verification**: Auto-generates wave and year identifiers with validation checks
 - **Uniqueness enforcement**: Applied `isid pid year` validation to enforce panel uniqueness; script aborts with diagnostic output if violations detected
 - **Intelligent missing value diagnosis**: Commented code documents past discoveries (e.g., father/mother income had >90% missing from 2016 onward; substituted family_income with ~10% missing rate)
 - **Output compression**: Automatically applies Stata `compress` to reduce file size while maintaining precision
-
-**Innovation:** Rather than assuming data quality, the script **proactively documents and resolves** missing value patterns, enabling informed variable selection without silent data loss.
 
 ---
 
@@ -41,10 +38,6 @@ This repository contains comprehensive analytical code and documentation for a l
   - *Implementation*: Loop over `levelsof year` with sample-size threshold (N≥20) per year
   - *Scoring*: Year-specific scores saved to panel-level variable for regression analysis
 
-- **Orientation control**: Automatic reversal ensures higher PCA scores = higher SES (checks variable signs)
-
-**Innovation:** Avoids temporal bias from pooled indexing; acknowledges that SES structure itself may evolve.
-
 ---
 
 ### 3. **Geographic Stratification with Sampling Bias Correction**
@@ -57,16 +50,11 @@ This repository contains comprehensive analytical code and documentation for a l
   - Small sample sizes creating misleading geographic patterns
   - *Documented rationale*: Without exclusion, Tibet appeared as "darkest blue" (highest ISEI) due to sampling artifact
 
-- **Geodetic matching**: Created HASC_1 codes (Hierarchical Administrative Subdivision Codes) linking 31 provinces to shapefile geometry for choropleth mapping
-- **Consistent color scaling**: All 7 yearly maps use global 6-quantile breaks computed from pooled provincial means
-
-**Innovation:** Transparency about geographic exclusion rules based on data quality, not just statistical convenience.
-
 ---
 
 ### 4. **Comprehensive Multi-Dimensional Robustness Framework**
 
-**Specification Testing (10+ variants):**
+**Specification Testing:**
 
 | Dimension | Variants | Purpose |
 |-----------|----------|---------|
@@ -75,29 +63,6 @@ This repository contains comprehensive analytical code and documentation for a l
 | **Subsamples** | Urban/Rural; Male/Female | Heterogeneous effects |
 | **Outcome Measures** | ISEI; SIOPS; EGP category | Measurement robustness |
 | **Controls** | Base; +Log family income | Channel specification |
-
-**Core Implementation Pattern:**
-```stata
-eststo m1: regress y_core x_core controls i.child_province
-estadd local FE "Prov"
-estadd local Sample "Full"
-...
-eststo m2: regress y_core x_core controls i.child_province i.year
-estadd local FE "Prov+Yr"
-...
-esttab m1 m2 ... using "robustness_summary.rtf"
-```
-
-- **Unified variable naming**: Models swap `y_core` and `x_core` definitions, allowing single summary table to compare all specifications
-- **Coefficient extraction pipeline**: `postfile` records year-specific estimates with standard errors for trend visualization
-- **Clustered standard errors**: Province-level clustering throughout to account for geographic dependence
-
-**Outputs:**
-- Individual robustness tables (6_1 through 6_7)
-- Single polished summary table (6_8) with explicit parameter grid
-- Coefficient plots showing effect size consistency
-
-**Innovation:** Unified comparison prevents copy-paste errors; explicit parameter documentation aids interpretation.
 
 ---
 
@@ -124,33 +89,14 @@ O/E Ratio = Observed(ij) / Expected(ij)
 - **Multi-track circular layout**: Outer ring labels sectors; inner ring shows counts and Roman numerals
 - **Directional rendering**: Gap specifications create visual separation between origin and destination domains
 
-**Innovation:** Transforms raw frequency tables into interpretable deviation-from-independence patterns, revealing structural constraints vs. simple compositional effects.
-
 ---
 
 ### 6. **Year-by-Year Regression with Coefficient Tracking**
-
-**Dynamic Pipeline:**
-
-Stata script loops through all survey years, fitting models and extracting coefficients into a temporary dataset:
-
-```stata
-foreach yy of local yrs {
-    mark `touse_pca' if year == `yy'
-    pca `pca_vars' if `touse_pca', components(1)
-    predict `temp_pca' if `touse_pca', score
-    regress child_isei parent_ses_pca `controls' if `touse_pca'
-    post `post_coef' (`yy') (`b') (`se') ...
-}
-postclose `post_coef'
-```
 
 **Generates Trend Visualizations:**
 - **Scatter + CI + trend line**: Year-specific point estimates with 95% confidence intervals
 - **Overlay fitted lines**: Seven regression lines with year-specific colors showing SES elasticity evolution
 - **Faceted panel plots**: 2×4 grid showing all year-specific scatter plots with fitted lines
-
-**Innovation:** Integrated year-specific PCA avoids temporal averaging bias; coefficient postfile enables dynamic visualization without re-running regressions.
 
 ---
 
@@ -304,19 +250,14 @@ Raw CFPS datasets **not included** due to:
 **Project Team:**
 - **Haiyun Shi** — u3661501@connect.hku.hk
 - **Yaru Yang** — u3661510@connect.hku.hk
-- **Yunzhi Jiang** — jiangyunzhi@connect.hku.hk (Project Lead)
+- **Yunzhi Jiang** — jiangyunzhi@connect.hku.hk 
 - **Chao Huang** — u3665987@connect.hku.hk
 
-**For Questions Regarding:**
+**For Questions or Any Precious Comments:**
 - **Code & reproducibility**: Yunzhi Jiang — Yunzhi.j@foxmail.com
 - **Data access**: Contact CSTAT or respective CFPS distributor
-- **Methodology**: Haiyun Shi or project leads
 
 ---
-
-## License & Citation
-
-This code and documentation are provided for research and educational purposes. If you use materials from this repository, please acknowledge the authors and cite the associated paper (citation forthcoming).
 
 **Last Updated:** April 2026  
 **Repository:** https://github.com/Yunzhi1211/cfps-parental-ses-and-child-outcomes

@@ -195,11 +195,11 @@ Multiple outcome measures ensure findings are not artifact of single classificat
 
 Raw CFPS datasets **not included** due to:
 - **File size**: Each cycle ~100–500 MB; 7 waves exceeds GitHub limits
-- **Access restrictions**: CFPS data subject to institutional access agreements; users must register with CSTAT
+- **Access restrictions**: CFPS data subject to institutional access agreements; users must register with CFPS Dataset
 
 ### To Reproduce
 
-1. **Obtain CFPS data**: Register at [CSTAT](http://www.cstat.org.cn) or China Education Panel Survey distributor
+1. **Obtain CFPS data**: Register at CFPS(https://www.isss.pku.edu.cn/cfps/index.htm)
 2. **Organize folder structure:**
    ```
    CFPS Project/
@@ -270,8 +270,7 @@ Raw CFPS datasets **not included** due to:
 
 **For Questions Regarding or Any Precious Comments:**
 - **Code & reproducibility**: Yunzhi Jiang — Yunzhi.j@foxmail.com
-- **Data access**: Contact CSTAT or respective CFPS distributor
-
+- **Data access**: Contact CFPS Dataset or isss.cfps@pku.edu.cn
 
 ---
 

@@ -1,11 +1,16 @@
 # Intergenerational Mobility in China: A CFPS Panel Study of Parental SES and Child Occupational Outcomes
 
 ## 中文简介
+
 本仓库汇总了关于“中国代际社会流动”的研究代码、图表脚本与项目说明。研究基于2010–2022年中国家庭追踪调查（CFPS）七期数据，考察父母社会经济地位（SES）如何影响子代职业结果，并重点分析这种影响在不同地区、不同年份及不同群体之间的差异。仓库内容涵盖数据清洗、面板构建、父母SES指数构造、基准回归、分位数回归、机制检验、三代效应分析以及海报图形可视化，旨在提高研究过程的透明度与可复现性。
+
+---
 
 ## Project Overview
 
 This repository contains comprehensive analytical code and documentation for a longitudinal study examining **intergenerational socioeconomic mobility** in China. Using the China Family Panel Studies (CFPS) dataset spanning 2010–2022, we investigate how parental socioeconomic resources (SES) shape children's occupational achievement, with particular attention to temporal trends, geographic variation, and heterogeneous effects across population subgroups.
+
+---
 
 **Research Focus:**
 - Quantifying the elasticity of intergenerational SES transmission across seven waves

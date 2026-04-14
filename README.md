@@ -50,5 +50,5 @@ Project team members:
 
 For any questions or comments regarding this repository, please feel free to contact:
 
-- Yunzhi Jiang — Yunzhi.j@foxmial.com
+- Yunzhi Jiang — Yunzhi.j@foxmail.com
 

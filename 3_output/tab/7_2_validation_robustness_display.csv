@@ -1,0 +1,30 @@
+Panel,Test,Item,Nspec,Main_result,Additional_result
+A. Placebo mediators,Placebo mediator,Exercise,3399,Indirect=0.015,Direct=2.695; Total=2.710
+,Placebo mediator,Income rank,7216,Indirect=-0.003,Direct=3.158; Total=3.156
+,Placebo mediator,Internet access/use,6548,Indirect=0.250,Direct=2.887; Total=3.137
+,Placebo mediator,Life satisfaction,7222,Indirect=0.000,Direct=3.150; Total=3.150
+,Placebo mediator,Own mobile phone,6536,Indirect=0.059,Direct=3.067; Total=3.126
+,Placebo mediator,Religion,7214,Indirect=0.000,Direct=3.150; Total=3.150
+,Placebo mediator,Sleep duration,1023,Indirect=0.014,Direct=2.900; Total=2.914
+,Placebo mediator,Stress,170,Indirect=-0.012,Direct=1.624; Total=1.612
+B. Placebo outcomes,Placebo outcome,Exercise,6828,Coef=0.580 (SE=3.742),p=0.878
+,Placebo outcome,Income rank,11362,Coef=2.349 (SE=0.370),p=0.000
+,Placebo outcome,Life satisfaction,11373,Coef=0.034 (SE=0.008),p=0.000
+,Placebo outcome,Religion,11710,Coef=-0.001 (SE=0.008),p=0.946
+,Placebo outcome,Sleep duration,3662,Coef=-0.060 (SE=0.026),p=0.029
+,Placebo outcome,Stress,3499,Coef=-0.008 (SE=0.013),p=0.519
+C. Temporal mediation,Temporal mediation,Child CPC,3389,Indirect=0.169,Direct=2.764; Total=2.933
+,Temporal mediation,Child education,4586,Indirect=1.836,Direct=1.285; Total=3.121
+,Temporal mediation,Educational expectation,2085,Indirect=0.956,Direct=2.178; Total=3.134
+,Temporal mediation,Future confidence,4724,Indirect=0.000,Direct=3.130; Total=3.130
+,Temporal mediation,Status rank,4720,Indirect=0.001,Direct=3.127; Total=3.128
+D. Nested controls,Nested controls,Child CPC,3 specs,Short=0.380; Base=0.182,Full=0.145
+,Nested controls,Child education,3 specs,Short=2.498; Base=1.811,Full=1.670
+,Nested controls,Educational expectation,3 specs,Short=0.927; Base=0.662,Full=0.579
+,Nested controls,Future confidence,3 specs,Short=0.004; Base=0.009,Full=0.011
+,Nested controls,Status rank,3 specs,Short=0.005; Base=0.014,Full=0.019
+E. Leave-one-wave-out,Leave-one-wave-out,Child CPC,7 omits,Mean=0.181,"[0.163, 0.185]"
+,Leave-one-wave-out,Child education,7 omits,Mean=1.808,"[1.728, 1.842]"
+,Leave-one-wave-out,Educational expectation,7 omits,Mean=0.657,"[0.635, 0.686]"
+,Leave-one-wave-out,Future confidence,7 omits,Mean=0.008,"[0.004, 0.012]"
+,Leave-one-wave-out,Status rank,7 omits,Mean=0.014,"[0.006, 0.017]"

@@ -1,0 +1,26 @@
+# Raw data
+0_raw/
+data_raw/
+
+# Temporary files
+2_temp/
+temp/
+
+# Log files
+4_log/
+*.log
+
+# Stata temporary files
+*.smcl
+*.ster
+*.tmp
+
+# R history / environment
+.Rhistory
+.RData
+.Rproj.user/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

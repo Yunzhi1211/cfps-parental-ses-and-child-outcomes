@@ -82,7 +82,7 @@ This repository contains comprehensive analytical code and documentation for a l
 - Individual robustness tables (6_1 through 6_7)
 - Single polished summary table (6_8) with explicit parameter grid
 - Coefficient plots showing effect size consistency
-- 
+
 ---
 
 ### 5. **Observed-to-Expected Mobility Analysis via Chord Diagrams (R)**

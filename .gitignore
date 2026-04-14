@@ -1,4 +1,5 @@
 0_draft/
+0_raw/
 3_output/
 temp/
 4_log/
@@ -12,3 +13,18 @@ R Code for Poster Figure and Other/0_unused_quantile_regression/
 *.ster
 *.tmp
 .Rhistory
+*.dta
+
+0_raw/
+*.dta
+.Rproj.user/
+3_output/
+4_log/
+temp/
+*.log
+*.tmp
+.Rhistory
+
+R Code for Poster Figure and Other/0_unused_distribution_pca_quantile/
+R Code for Poster Figure and Other/0_unused_heatmaps/
+R Code for Poster Figure and Other/0_unused_quantile_regression/

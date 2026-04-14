@@ -12,7 +12,7 @@ This repository contains comprehensive analytical code and documentation for a l
 
 ---
 
-**Research Focus:**
+## Research Focus
 - Quantifying the elasticity of intergenerational SES transmission across seven waves
 - Identifying mechanisms through which parental SES operates (occupation, education, political capital)
 - Assessing geographic inequality in mobility processes

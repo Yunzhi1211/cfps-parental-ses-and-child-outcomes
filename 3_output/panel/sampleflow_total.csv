@@ -1,8 +1,0 @@
-step,n_rows,n_pid,n_fid
-Raw adult sample,477266,472024,29216
-Valid unique respondents,472024,472024,158430
-Intergenerational link identified,472024,472024,186318
-Matched to at least one parent,147450,147450,104382
-Matched to family economic data,144578,144578,102124
-With child occupational outcome,82496,82496,70272
-Yearly file saved,147450,147450,104382

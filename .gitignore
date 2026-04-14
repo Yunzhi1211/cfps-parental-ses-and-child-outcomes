@@ -7,9 +7,17 @@ data_raw/
 2_temp/
 temp/
 
+# Mess Output
+3_output
+
 # Log files
 4_log/
 *.log
+
+# R code Unused
+ R Code for Poster Figure and Other/0_unused_distribution_pca_quantile
+R Code for Poster Figure and Other/0_unused_heatmaps
+R Code for Poster Figure and Other/0_unused_quantile_regression
 
 # Stata temporary files
 *.smcl

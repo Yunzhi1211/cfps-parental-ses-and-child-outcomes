@@ -268,7 +268,7 @@ Raw CFPS datasets **not included** due to:
 - **Yunzhi Jiang** — jiangyunzhi@connect.hku.hk
 - **Chao Huang** — u3665987@connect.hku.hk
 
-**For Questions Regarding or Any Precious Comments:**
+**For Questions or Comments:**
 - **Code & reproducibility**: Yunzhi Jiang — Yunzhi.j@foxmail.com
 - **Data access**: Contact CFPS Dataset or isss.cfps@pku.edu.cn
 

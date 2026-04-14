@@ -1,0 +1,4 @@
+class,q,mediator,mlabel,N,a,b,direct,total,indirect,abs_indirect
+Lower class (Q25),25,child_edu,Child education,6959,1.0223516,1.1265177,1.5560026,2.7111838,1.1516972,1.1516972
+Middle class (Q50),50,child_edu,Child education,6959,1.0223516,1.4605451,1.5072072,3.2469542,1.4931905,1.4931905
+Upper class (Q75),75,child_edu,Child education,6959,1.0223516,1.9297682,1.8376756,4.1607265,1.9729016,1.9729016

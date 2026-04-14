@@ -220,3 +220,126 @@ ggsave(
   dpi = 300,
   bg = "white"
 )
+
+# =========================
+# Quantile mediation figure
+# =========================
+q_all <- read_csv(file.path("3_mechanism_sun", "7_1b_quantile_class_mediation_all.csv"), show_col_types = FALSE)
+
+# Build a clean quantile dataset
+q_clean <- q_all %>%
+  filter(!is.na(q), !is.na(mlabel), !is.na(abs_indirect), !is.na(N), N >= 50, q %in% c(25, 50, 75)) %>%
+  mutate(
+    class_label = case_when(
+      q == 25 ~ "Q25",
+      q == 50 ~ "Q50",
+      q == 75 ~ "Q75",
+      TRUE ~ as.character(q)
+    ),
+    class_label = factor(class_label, levels = c("Q25", "Q50", "Q75"))
+  )
+
+# Identify top mediators with the largest cross-quantile differences
+top_n <- 5
+top_diff <- q_clean %>%
+  group_by(mediator, mlabel) %>%
+  summarise(
+    max_abs = max(abs_indirect, na.rm = TRUE),
+    min_abs = min(abs_indirect, na.rm = TRUE),
+    diff_abs = max_abs - min_abs,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(diff_abs), desc(max_abs)) %>%
+  slice_head(n = top_n)
+
+plot_topn <- q_clean %>%
+  semi_join(top_diff, by = c("mediator", "mlabel")) %>%
+  left_join(top_diff %>% select(mediator, diff_abs), by = "mediator") %>%
+  left_join(
+    top_diff %>%
+      arrange(desc(diff_abs), desc(max_abs)) %>%
+      mutate(color_rank = row_number()),
+    by = c("mediator", "mlabel", "diff_abs")
+  ) %>%
+  group_by(mediator, mlabel, color_rank) %>%
+  mutate(
+    label_q75 = ifelse(class_label == "Q75", mlabel, NA_character_)
+  ) %>%
+  ungroup()
+
+# Build upper-left label block
+q75_labels <- plot_topn %>%
+  filter(class_label == "Q75") %>%
+  arrange(desc(abs_indirect)) %>%
+  mutate(
+    label_rank = row_number(),
+    label_y = seq(from = 2.25, to = 1.30, length.out = n()),
+    label_txt = paste0(label_rank, ". ", gsub("^Child\\s+", "", mlabel))
+  )
+
+plot_main <- plot_topn
+q75_labels_main <- q75_labels
+
+# Blue-first palette with one red accent for the most different line
+line_colors <- c(
+  "#C62828", "#0B3C6F", "#15558A", "#1F6EA3", "#2E7EB0",
+  "#4A95C2", "#63A6D3", "#7CB6DC", "#9AC9E9", "#B9DAF1"
+)
+line_colors <- line_colors[1:length(unique(plot_topn$color_rank))]
+names(line_colors) <- as.character(sort(unique(plot_topn$color_rank)))
+
+p_q <- ggplot(plot_main, aes(x = as.numeric(class_label), y = abs_indirect, color = as.factor(color_rank), group = mlabel)) +
+  geom_line(linewidth = 2.1, alpha = 0.97, lineend = "round") +
+  geom_point(size = 5.6, alpha = 1, stroke = 1.0, shape = 21, fill = "white") +
+  geom_label(
+    data = q75_labels_main,
+    aes(x = 0.88, y = label_y, label = label_txt, color = as.factor(color_rank)),
+    fill = "white",
+    label.size = 0.30,
+    hjust = 0,
+    label.r = unit(0.12, "lines"),
+    size = 15.5 / .pt,
+    fontface = "bold"
+  ) +
+  scale_color_manual(values = line_colors) +
+  labs(
+    title = paste0("Top ", top_n, " mediators by quantile difference"),
+    subtitle = "Difference metric: max(|a*b|) - min(|a*b|) across Q25, Q50, Q75",
+    x = NULL,
+    y = "|Indirect effect|"
+  ) +
+  scale_x_continuous(
+    breaks = c(1, 2, 3),
+    labels = c("Q25", "Q50", "Q75"),
+    limits = c(0.78, 3.10),
+    expand = expansion(mult = c(0.02, 0.02))
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0.03, 0.12))) +
+  coord_cartesian(clip = "off") +
+  theme_minimal(base_size = 32) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(face = "bold", size = 34, color = "#123A63", margin = margin(t = 10)),
+    axis.text.y = element_text(face = "bold", size = 30, color = "#1E3A5F"),
+    axis.title.y = element_text(face = "bold", size = 28, color = "#1E3A5F"),
+    plot.title = element_text(face = "bold", size = 40, hjust = 0.5, color = "#143A5A"),
+    plot.subtitle = element_text(size = 26, hjust = 0.5, margin = margin(b = 20), color = "#2F5D7C"),
+    panel.grid.major.x = element_line(color = "#E5EFF8", linewidth = 0.8),
+    panel.grid.major.y = element_line(color = "#D8E4F0", linewidth = 0.7),
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.margin = margin(26, 70, 30, 120)
+  )
+
+print(p_q)
+
+ggsave(
+  file.path("3_mechanism_sun", "quantile_top_diff_mediators_fancy.png"),
+  plot = p_q,
+  width = 24,
+  height = 18,
+  units = "cm",
+  dpi = 400,
+  bg = "white"
+)

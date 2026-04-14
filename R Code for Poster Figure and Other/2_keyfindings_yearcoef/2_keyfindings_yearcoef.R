@@ -7,6 +7,7 @@ library(ggplot2)
 library(broom)
 library(scales)
 library(patchwork)
+library(quantreg)
 
 # =========================================================
 # 1. Read panel data (same style as mapcoef.R)
@@ -75,364 +76,203 @@ cat("\nVariance explained by PC1:\n")
 print(round(summary(pca_fit)$importance[2, 1], 3))
 
 # =========================================================
-# 4. Year-specific regressions
+# 4. Year-specific quantile regressions (RQ2 core)
 # =========================================================
 df_use <- df2 %>%
   filter(!is.na(year), !is.na(child_isei), !is.na(parent_ses))
 
+safe_qcoef <- function(dat, tau) {
+  tryCatch({
+    fit <- rq(child_isei ~ parent_ses, tau = tau, data = dat)
+    unname(coef(fit)[["parent_ses"]])
+  }, error = function(e) NA_real_)
+}
+
+boot_qdiff <- function(dat, reps = 250) {
+  est <- safe_qcoef(dat, 0.75) - safe_qcoef(dat, 0.25)
+  n <- nrow(dat)
+  if (!is.finite(est) || n < 120) {
+    return(tibble(qdiff = est, qdiff_lo = NA_real_, qdiff_hi = NA_real_))
+  }
+  diffs <- rep(NA_real_, reps)
+  for (b in seq_len(reps)) {
+    ds <- dat[sample.int(n, n, replace = TRUE), , drop = FALSE]
+    c25 <- safe_qcoef(ds, 0.25)
+    c75 <- safe_qcoef(ds, 0.75)
+    diffs[b] <- c75 - c25
+  }
+  diffs <- diffs[is.finite(diffs)]
+  if (length(diffs) < 30) {
+    return(tibble(qdiff = est, qdiff_lo = NA_real_, qdiff_hi = NA_real_))
+  }
+  tibble(
+    qdiff = est,
+    qdiff_lo = as.numeric(quantile(diffs, 0.025, na.rm = TRUE)),
+    qdiff_hi = as.numeric(quantile(diffs, 0.975, na.rm = TRUE))
+  )
+}
+
 year_stats <- df_use %>%
   count(year, name = "n")
 
-min_n <- 80
-min_n_latest <- 20
-latest_year <- max(year_stats$year, na.rm = TRUE)
-
 valid_years <- year_stats %>%
-  filter(n >= min_n | (year == latest_year & n >= min_n_latest)) %>%
+  filter(n >= 100) %>%
   pull(year)
 
-if (length(valid_years) == 0) {
-  stop("No year has enough observations for regression.")
-}
-
-year_coef <- df_use %>%
+year_q <- df_use %>%
   filter(year %in% valid_years) %>%
   group_by(year) %>%
   group_modify(~{
-    fit <- lm(child_isei ~ parent_ses, data = .x)
-    tidy(fit, conf.int = TRUE) %>%
-      filter(term == "parent_ses")
+    qd <- boot_qdiff(.x, reps = 250)
+    tibble(
+      q25 = safe_qcoef(.x, 0.25),
+      q50 = safe_qcoef(.x, 0.50),
+      q75 = safe_qcoef(.x, 0.75),
+      qdiff = qd$qdiff,
+      qdiff_lo = qd$qdiff_lo,
+      qdiff_hi = qd$qdiff_hi
+    )
   }) %>%
   ungroup() %>%
   left_join(year_stats, by = "year") %>%
   mutate(
-    year = as.integer(year),
-    sig = p.value < 0.05
+    sig_diff = ifelse(is.na(qdiff_lo) | is.na(qdiff_hi), FALSE, qdiff_lo > 0 | qdiff_hi < 0)
   ) %>%
   arrange(year)
 
-print(year_coef)
+print(year_q)
 
-if (!latest_year %in% year_coef$year) {
-  warning("Latest year is not included in year_coef after filtering.")
-}
+line_dat <- bind_rows(
+  year_q %>% transmute(year, quantile = "Q25", beta = q25),
+  year_q %>% transmute(year, quantile = "Q50", beta = q50),
+  year_q %>% transmute(year, quantile = "Q75", beta = q75)
+) %>%
+  mutate(quantile = factor(quantile, levels = c("Q25", "Q50", "Q75")))
 
 # =========================================================
-# 5. Fancy figure
+# 5. Two-panel RQ2 figure
 # =========================================================
-y_min <- min(year_coef$conf.low, na.rm = TRUE) - 0.05
-y_max <- max(year_coef$conf.high, na.rm = TRUE) + 0.05
+yr_min <- min(year_q$year, na.rm = TRUE)
+yr_max <- max(year_q$year, na.rm = TRUE)
+y_left_min <- min(line_dat$beta, na.rm = TRUE) - 0.25
+y_left_max <- max(line_dat$beta, na.rm = TRUE) + 0.35
+y_right_min <- min(year_q$qdiff_lo, na.rm = TRUE) - 0.2
+y_right_max <- max(year_q$qdiff_hi, na.rm = TRUE) + 0.2
 
-# Build a smooth trend with confidence band for a richer look
-lo_fit <- loess(estimate ~ year, data = year_coef, span = 0.75)
-lo_grid <- data.frame(year = seq(min(year_coef$year), max(year_coef$year), length.out = 220))
-lo_pred <- predict(lo_fit, newdata = lo_grid, se = TRUE)
-lo_grid <- lo_grid %>%
-  mutate(
-    fit = lo_pred$fit,
-    se = lo_pred$se.fit,
-    low = fit - 1.96 * se,
-    high = fit + 1.96 * se
-  )
+peak_gap <- year_q %>% slice_max(qdiff, n = 1, with_ties = FALSE)
+last_gap <- year_q %>% slice_max(year, n = 1, with_ties = FALSE)
 
-# Highlight the local max and min years
-peak_row <- year_coef %>% slice_max(estimate, n = 1, with_ties = FALSE)
-low_row  <- year_coef %>% slice_min(estimate, n = 1, with_ties = FALSE)
-last_row <- year_coef %>% slice_max(year, n = 1, with_ties = FALSE)
-
-# Soft horizontal bands to create a poster-like depth
-band_breaks <- pretty(c(y_min, y_max), n = 5)
-band_dat <- data.frame(
-  ymin = head(band_breaks, -1),
-  ymax = tail(band_breaks, -1),
-  id = seq_len(length(band_breaks) - 1)
-)
-
-p_year <- ggplot(year_coef, aes(x = year, y = estimate, color = estimate)) +
+p_left <- ggplot(line_dat, aes(x = year, y = beta, color = quantile)) +
   geom_rect(
-    data = band_dat,
-    aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax, fill = id),
-    inherit.aes = FALSE,
-    alpha = 0.2,
-    color = NA
-  ) +
-  geom_hline(
-    yintercept = 0,
-    color = "#7F8EA3",
-    linewidth = 0.9,
-    linetype = "22"
-  ) +
-  geom_ribbon(
-    data = lo_grid,
-    aes(x = year, ymin = low, ymax = high),
-    inherit.aes = FALSE,
-    fill = alpha("#7EA7D8", 0.24),
-    color = NA
-  ) +
-  geom_linerange(
-    aes(ymin = conf.low, ymax = conf.high),
-    linewidth = 2.2,
-    alpha = 0.92
-  ) +
-  geom_segment(
-    aes(x = year, xend = year, y = 0, yend = estimate),
-    color = alpha("#94A3B8", 0.28),
-    linewidth = 0.9
-  ) +
-  geom_point(
-    aes(size = n, shape = sig),
-    stroke = 1.2,
-    fill = "white"
-  ) +
-  geom_line(
-    aes(group = 1),
-    color = alpha("#3D4A63", 0.35),
-    linewidth = 0.95
-  ) +
-  geom_smooth(
-    method = "loess",
-    formula = y ~ x,
-    se = FALSE,
-    span = 0.75,
-    color = "#153E75",
-    linewidth = 1.5
-  ) +
-  geom_text(
-    data = year_coef %>% filter(year == min(year) | year == max(year)),
-    aes(label = sprintf("%.2f", estimate)),
-    nudge_y = 0.045,
-    color = "#1F2937",
-    size = 4.2,
-    fontface = "bold",
-    show.legend = FALSE
-  ) +
-  geom_label(
-    data = peak_row,
-    aes(x = year, y = estimate + 0.06, label = paste0("Peak ", year, ": ", sprintf("%.2f", estimate))),
-    inherit.aes = FALSE,
-    fill = alpha("#E7F0FB", 0.98),
-    color = "#17406F",
-    fontface = "bold",
-    size = 3.7,
-    label.size = 0,
-    label.padding = unit(0.14, "lines")
-  ) +
-  geom_label(
-    data = low_row,
-    aes(x = year, y = estimate - 0.06, label = paste0("Low ", year, ": ", sprintf("%.2f", estimate))),
-    inherit.aes = FALSE,
-    fill = alpha("#F3F6FA", 0.98),
-    color = "#3F4D63",
-    fontface = "bold",
-    size = 3.5,
-    label.size = 0,
-    label.padding = unit(0.14, "lines")
-  ) +
-  annotate(
-    "label",
-    x = max(year_coef$year) - 0.1,
-    y = y_min + 0.08,
-    label = paste0(
-      "Latest year: ", last_row$year,
-      "\nCoef: ", sprintf("%.2f", last_row$estimate),
-      "  |  N: ", comma(last_row$n)
+    data = data.frame(
+      xmin = yr_min - 0.6, xmax = yr_max + 0.6,
+      ymin = -Inf, ymax = Inf
     ),
-    hjust = 1,
-    vjust = 0,
-    fill = alpha("white", 0.95),
-    color = "#1F2937",
-    size = 3.5,
-    label.size = 0
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "#F5F9FF",
+    color = NA
   ) +
-  scale_fill_gradient(
-    low = "#F8FBFF",
-    high = "#DCEAF8",
-    guide = "none"
-  ) +
-  scale_color_gradient2(
-    low = "#A9C8E8",
-    mid = "#4F80B8",
-    high = "#113F79",
-    midpoint = median(year_coef$estimate, na.rm = TRUE),
-    guide = "none"
-  ) +
-  scale_shape_manual(
-    values = c(`TRUE` = 16, `FALSE` = 1),
-    labels = c(`TRUE` = "p < 0.05", `FALSE` = "Not significant"),
-    name = NULL
-  ) +
-  scale_size_continuous(
-    range = c(3.2, 8.4),
-    breaks = pretty_breaks(3),
-    name = "Sample size"
+  geom_line(linewidth = 1.9, alpha = 0.98, show.legend = FALSE) +
+  geom_point(size = 3.9, stroke = 1.0, fill = "white", shape = 21, show.legend = FALSE) +
+  scale_color_manual(values = c("Q25" = "#9CC1E4", "Q50" = "#4B83BA", "Q75" = "#133F72")) +
+  labs(
+    title = "Time Heterogeneity Across Quantiles",
+    subtitle = "Separated panels make quantile trajectories directly comparable",
+    x = NULL,
+    y = "Coefficient"
   ) +
   scale_x_continuous(
-    breaks = year_coef$year,
-    expand = expansion(mult = c(0.02, 0.03))
+    breaks = sort(unique(year_q$year)),
+    limits = c(yr_min - 0.55, yr_max + 0.65)
   ) +
-  coord_cartesian(ylim = c(y_min, y_max)) +
-  labs(
-    title = "Intergenerational Transmission Dynamics by Year",
-    subtitle = "Parental SES effect on child ISEI with yearly estimates, 95% CI, and smoothed trajectory",
-    x = NULL,
-    y = "Coefficient estimate"
-  ) +
+  scale_y_continuous(expand = expansion(mult = c(0.10, 0.12))) +
+  facet_wrap(~quantile, ncol = 1, scales = "free_y", strip.position = "right") +
   theme_minimal(base_size = 13) +
   theme(
-    plot.title = element_text(face = "bold", size = 24, hjust = 0.5, margin = margin(b = 4)),
-    plot.subtitle = element_text(size = 11.3, color = "grey30", hjust = 0.5, margin = margin(b = 14)),
-    axis.text.x = element_text(size = 10, color = "#4B5563"),
-    axis.text.y = element_text(size = 11, color = "#374151"),
-    axis.title.y = element_text(size = 12, margin = margin(r = 10)),
+    plot.title = element_text(face = "bold", size = 21, hjust = 0.5, color = "#163E68"),
+    plot.subtitle = element_text(size = 11.3, hjust = 0.5, color = "#35597A", margin = margin(b = 8)),
+    axis.text.x = element_text(size = 10.3, face = "bold", color = "#41566E"),
+    axis.text.y = element_text(size = 10.3, face = "bold", color = "#41566E"),
+    axis.title.y = element_text(size = 14, face = "bold", color = "#1F3F5F"),
+    panel.grid.major.x = element_line(color = "#E3EAF3", linewidth = 0.7),
+    panel.grid.major.y = element_line(color = "#E3EAF3", linewidth = 0.7),
     panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    panel.grid.major.y = element_line(color = "#E3E9F2", linewidth = 0.65),
-    legend.position = "bottom",
-    legend.box = "vertical",
-    legend.margin = margin(t = 4),
+    strip.placement = "outside",
+    strip.text = element_text(size = 11.5, face = "bold", color = "#173E67"),
+    strip.background = element_rect(fill = "#E8F1FC", color = NA),
+    panel.background = element_rect(fill = "#F8FBFF", color = NA),
     plot.background = element_rect(fill = "white", color = NA),
-    plot.margin = margin(16, 16, 14, 14)
-  )
-
-print(p_year)
-
-ggsave(
-  file.path("2_keyfindings_yearcoef", "yearcoef_fancy.png"),
-  p_year,
-  width = 11,
-  height = 6,
-  dpi = 600,
-  bg = "white"
-)
-
-# =========================================================
-# 6. Super poster style (light theme, two small panels)
-# =========================================================
-
-# Left small panel: timeline trend with smooth line
-p_year_left <- p_year +
-  labs(
-    title = "Yearly Dynamics",
-    subtitle = "Smoothed trajectory with yearly CI"
-  ) +
-  theme(
-    plot.title = element_text(size = 20, hjust = 0.5, face = "bold"),
-    plot.subtitle = element_text(size = 10.5, hjust = 0.5),
-    axis.text.x = element_text(size = 9),
-    axis.text.y = element_text(size = 10),
-    axis.title.y = element_text(size = 11),
     legend.position = "none",
-    plot.margin = margin(8, 8, 8, 8)
+    plot.margin = margin(12, 14, 12, 14)
   )
 
-# Right small panel: ranking-card style by year
-year_rank_dat <- year_coef %>%
-  arrange(desc(estimate)) %>%
-  mutate(
-    rank = row_number(),
-    year_f = factor(year, levels = rev(year))
-  )
-
-xmin_rank <- min(year_rank_dat$conf.low, na.rm = TRUE) - 0.14
-xmax_rank <- max(year_rank_dat$conf.high, na.rm = TRUE) + 0.14
-label_x_rank <- xmax_rank - 0.02
-card_fill_seq <- colorRampPalette(c("#DDEBFA", "#F7FAFE"))(nrow(year_rank_dat))
-
-card_dat_rank <- year_rank_dat %>%
-  mutate(
-    card_fill = card_fill_seq[rank],
-    card_x = (xmin_rank + xmax_rank) / 2,
-    card_width = xmax_rank - xmin_rank,
-    card_height = 0.84
-  )
-
-p_year_right <- ggplot(year_rank_dat, aes(x = estimate, y = year_f)) +
-  geom_tile(
-    data = card_dat_rank,
-    aes(x = card_x, y = year_f, width = card_width, height = card_height),
+p_right <- ggplot(year_q, aes(x = year, y = qdiff)) +
+  geom_rect(
+    data = data.frame(xmin = yr_min - 0.5, xmax = yr_max + 0.5, ymin = y_right_min, ymax = y_right_max),
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
     inherit.aes = FALSE,
-    fill = card_dat_rank$card_fill,
-    color = "white",
-    linewidth = 0.9
+    fill = "#F9FBFF",
+    color = NA
   ) +
-  geom_vline(
-    xintercept = seq(0, floor(xmax_rank * 10) / 10, by = 0.1),
-    color = "#E4EAF2",
-    linewidth = 0.45
-  ) +
-  geom_vline(
-    xintercept = 0,
-    color = "#AAB3BE",
-    linewidth = 0.9,
-    linetype = "22"
-  ) +
-  geom_segment(
-    aes(x = 0, xend = estimate, y = year_f, yend = year_f),
-    color = "#C9D9EC",
-    linewidth = 1.8,
-    lineend = "round"
-  ) +
-  geom_errorbarh(
-    aes(xmin = conf.low, xmax = conf.high),
-    color = "#4F80B8",
-    height = 0,
-    linewidth = 1.8
-  ) +
-  geom_point(
-    aes(size = n, fill = estimate),
-    shape = 21,
-    color = "white",
-    stroke = 1.0
+  geom_hline(yintercept = 0, color = "#8A98AB", linetype = "22", linewidth = 0.9) +
+  geom_ribbon(aes(ymin = qdiff_lo, ymax = qdiff_hi), fill = "#CCE0F7", alpha = 0.82) +
+  geom_line(color = "#BC2D2A", linewidth = 1.9) +
+  geom_point(aes(shape = sig_diff), size = 4.1, color = "#BC2D2A", fill = "white", stroke = 1.2) +
+  geom_label(
+    data = peak_gap,
+    aes(label = paste0("Peak ", year, ": ", sprintf("%.2f", qdiff))),
+    nudge_y = 0.45,
+    size = 3.5,
+    fontface = "bold",
+    fill = alpha("white", 0.95),
+    color = "#9E1F1C",
+    label.size = 0
   ) +
   geom_label(
-    aes(x = label_x_rank, label = sprintf("%.2f", estimate)),
-    size = 3.35,
+    data = last_gap,
+    aes(label = paste0("Latest ", year, ": ", sprintf("%.2f", qdiff))),
+    nudge_y = -0.42,
+    size = 3.3,
     fontface = "bold",
-    fill = alpha("white", 0.96),
-    color = "#2F3A4C",
-    label.size = 0,
-    hjust = 1
+    fill = alpha("white", 0.95),
+    color = "#2B415A",
+    label.size = 0
   ) +
-  scale_fill_gradient2(
-    low = "#AFCDEA",
-    mid = "#5A86BE",
-    high = "#224F92",
-    midpoint = median(year_rank_dat$estimate, na.rm = TRUE),
-    guide = "none"
-  ) +
-  scale_size_continuous(range = c(3.0, 6.2), guide = "none") +
-  scale_x_continuous(
-    limits = c(xmin_rank, xmax_rank),
-    breaks = pretty_breaks(4),
-    expand = expansion(mult = c(0, 0))
-  ) +
+  scale_shape_manual(values = c(`TRUE` = 16, `FALSE` = 1), labels = c(`TRUE` = "CI excludes 0", `FALSE` = "CI includes 0")) +
   labs(
-    title = "Year Ranking Card",
-    subtitle = "Coefficient size by year",
-    x = "Coefficient estimate",
-    y = NULL
+    title = "Is Q75 > Q25 Over Time?",
+    subtitle = "Gap = beta(Q75) - beta(Q25), with 95% bootstrap CI (solid point: CI excludes 0)",
+    x = NULL,
+    y = "Q75 - Q25"
   ) +
-  theme_minimal(base_size = 12) +
+  scale_x_continuous(breaks = sort(unique(year_q$year))) +
+  coord_cartesian(ylim = c(y_right_min, y_right_max)) +
+  theme_minimal(base_size = 13) +
   theme(
-    plot.title = element_text(size = 20, hjust = 0.5, face = "bold"),
-    plot.subtitle = element_text(size = 10.5, hjust = 0.5, color = "grey35"),
-    axis.text.y = element_text(size = 8.5, color = "#2F3540"),
-    axis.text.x = element_text(size = 9.5, color = "#4B5563"),
-    axis.title.x = element_text(size = 10.5),
-    panel.grid = element_blank(),
-    plot.margin = margin(8, 10, 8, 4)
+    plot.title = element_text(face = "bold", size = 21, hjust = 0.5, color = "#163E68"),
+    plot.subtitle = element_text(size = 11.3, hjust = 0.5, color = "#35597A", margin = margin(b = 8)),
+    axis.text.x = element_text(size = 10.5, face = "bold", color = "#41566E"),
+    axis.text.y = element_text(size = 10.5, face = "bold", color = "#41566E"),
+    axis.title.y = element_text(size = 12.5, face = "bold", color = "#1F3F5F"),
+    panel.grid.major.x = element_line(color = "#E3EAF3", linewidth = 0.7),
+    panel.grid.major.y = element_line(color = "#E3EAF3", linewidth = 0.7),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "#F8FBFF", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    legend.position = "none",
+    plot.margin = margin(12, 14, 12, 14)
   )
 
-year_two_panel <- p_year_left + p_year_right +
-  plot_layout(widths = c(1.52, 1.0))
+year_two_panel <- p_left + p_right + plot_layout(widths = c(1, 1))
 
 print(year_two_panel)
 
 ggsave(
-  file.path("2_keyfindings_yearcoef", "yearcoef_superposter_twopanel_light.png"),
+  file.path("2_keyfindings_yearcoef", "yearcoef_fancy.png"),
   year_two_panel,
-  width = 12.4,
-  height = 6.2,
-  dpi = 650,
+  width = 11,
+  height = 6,
+  dpi = 600,
   bg = "white"
 )

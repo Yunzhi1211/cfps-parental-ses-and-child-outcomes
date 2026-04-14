@@ -10,6 +10,7 @@ library(patchwork)
 library(forcats)
 library(scales)
 library(grid)
+library(quantreg)
 
 use_shadowtext <- requireNamespace("shadowtext", quietly = TRUE)
 
@@ -139,15 +140,52 @@ print(sort(table(df_use$prov_name), decreasing = TRUE))
 # =========================================================
 # 6. Region-specific regressions
 # =========================================================
+safe_qcoef <- function(dat, tau) {
+  tryCatch({
+    fit <- rq(child_isei ~ parent_ses, tau = tau, data = dat)
+    unname(coef(fit)[["parent_ses"]])
+  }, error = function(e) NA_real_)
+}
+
+boot_qdiff <- function(dat, reps = 300) {
+  est <- safe_qcoef(dat, 0.75) - safe_qcoef(dat, 0.25)
+  n <- nrow(dat)
+  if (!is.finite(est) || n < 120) {
+    return(tibble(qdiff = est, qdiff_lo = NA_real_, qdiff_hi = NA_real_))
+  }
+  diffs <- rep(NA_real_, reps)
+  for (b in seq_len(reps)) {
+    ds <- dat[sample.int(n, n, replace = TRUE), , drop = FALSE]
+    c25 <- safe_qcoef(ds, 0.25)
+    c75 <- safe_qcoef(ds, 0.75)
+    diffs[b] <- c75 - c25
+  }
+  diffs <- diffs[is.finite(diffs)]
+  if (length(diffs) < 40) {
+    return(tibble(qdiff = est, qdiff_lo = NA_real_, qdiff_hi = NA_real_))
+  }
+  tibble(
+    qdiff = est,
+    qdiff_lo = as.numeric(quantile(diffs, 0.025, na.rm = TRUE)),
+    qdiff_hi = as.numeric(quantile(diffs, 0.975, na.rm = TRUE))
+  )
+}
+
 region_coef <- df_use %>%
   group_by(region_label) %>%
   group_modify(~{
-    fit <- lm(child_isei ~ parent_ses, data = .x)
-    tidy(fit, conf.int = TRUE) %>%
-      filter(term == "parent_ses")
+    qd <- boot_qdiff(.x, reps = 300)
+    tibble(
+      q25 = safe_qcoef(.x, 0.25),
+      q50 = safe_qcoef(.x, 0.50),
+      q75 = safe_qcoef(.x, 0.75),
+      qdiff = qd$qdiff,
+      qdiff_lo = qd$qdiff_lo,
+      qdiff_hi = qd$qdiff_hi
+    )
   }) %>%
   ungroup() %>%
-  select(region_label, estimate, conf.low, conf.high, std.error, p.value)
+  mutate(diff_sig = ifelse(is.na(qdiff_lo) | is.na(qdiff_hi), NA, qdiff_lo > 0 | qdiff_hi < 0))
 
 print(region_coef)
 
@@ -214,7 +252,7 @@ china_plot_dat <- china_map2 %>%
   left_join(region_coef2, by = "region_label") %>%
   mutate(
     map_status = ifelse(prov_name %in% drop_prov, "excluded", "included"),
-    estimate_map = ifelse(prov_name %in% drop_prov, NA, estimate)
+    estimate_map = ifelse(prov_name %in% drop_prov, NA, qdiff)
   )
 
 map_included <- china_plot_dat %>%
@@ -302,8 +340,8 @@ p_map_base <- ggplot() +
   ) +
   coord_sf(datum = NA) +
   labs(
-    title = "Regional Heterogeneity",
-    subtitle = "Stepped spatial pattern in intergenerational transmission"
+    title = "Regional Heterogeneity in Quantile Gaps",
+    subtitle = "Map shows Q75 - Q25 effect of parental SES"
   ) +
   theme_void(base_size = 13) +
   theme(
@@ -361,117 +399,68 @@ if (use_shadowtext) {
 }
 
 # =========================================================
-# 11. Right panel: advanced ranking card style
+# 11. Right panel: dumbbell (Q25 vs Q75)
 # =========================================================
 coef_plot_dat <- region_coef2 %>%
-  arrange(desc(estimate)) %>%
-  mutate(rank = row_number())
+  arrange(desc(qdiff)) %>%
+  mutate(region_label = factor(region_label, levels = rev(region_label)))
 
-display_order <- coef_plot_dat$region_label
+xmax_plot <- max(coef_plot_dat$q75, na.rm = TRUE) + 0.5
 
-# Reverse factor levels so the largest value is shown at the top
-coef_plot_dat <- coef_plot_dat %>%
-  mutate(region_label = factor(region_label, levels = rev(display_order)))
-
-xmax_plot <- max(coef_plot_dat$conf.high, na.rm = TRUE) + 1.8
-label_x   <- xmax_plot - 0.12
-card_center_x <- xmax_plot / 2
-
-# Card shade is tied to rank order
-card_fills <- c("#DCE8F6", "#E8F0F9", "#F2F6FB", "#FAFCFE")
-
-card_dat <- coef_plot_dat %>%
-  arrange(desc(estimate)) %>%
-  mutate(
-    card_fill = card_fills[seq_len(n())],
-    card_x = card_center_x,
-    card_width = xmax_plot,
-    card_height = 0.86
-  ) %>%
-  mutate(region_label = factor(region_label, levels = rev(display_order)))
-
-p_coef_final <- ggplot(coef_plot_dat, aes(x = estimate, y = region_label)) +
-  # ranking cards
-  geom_tile(
-    data = card_dat,
-    aes(x = card_x, y = region_label, width = card_width, height = card_height),
-    inherit.aes = FALSE,
-    fill = card_dat$card_fill,
-    color = "white",
-    linewidth = 1.2
-  ) +
-  
-  # subtle vertical guides
-  geom_vline(
-    xintercept = seq(0, floor(xmax_plot), by = 1),
-    color = "#D8E1EC",
-    linewidth = 0.7
-  ) +
-  
-  # zero line
-  geom_vline(
-    xintercept = 0,
-    color = "#AAB3BE",
-    linewidth = 1.0,
-    linetype = "22"
-  ) +
-  
-  # faint guide segment from 0 to estimate
+p_coef_final <- ggplot(coef_plot_dat, aes(y = region_label)) +
   geom_segment(
-    aes(x = 0, xend = estimate, y = region_label, yend = region_label),
-    color = "#C7D6E8",
-    linewidth = 3.2,
+    aes(x = q25, xend = q75, yend = region_label),
+    color = "#97B5D6",
+    linewidth = 3.0,
     lineend = "round"
   ) +
-  
-  # confidence interval
-  geom_errorbarh(
-    aes(xmin = conf.low, xmax = conf.high, color = region_label),
-    height = 0,
-    linewidth = 3.0,
-    alpha = 1
-  ) +
-  
-  # big outer circle
   geom_point(
-    aes(fill = region_label),
+    aes(x = q25),
+    size = 5.2,
+    color = "#6FA0CF",
+    fill = "white",
     shape = 21,
-    color = "white",
-    stroke = 1.8,
-    size = 8.8
+    stroke = 1.2
   ) +
-  
-  # inner point
   geom_point(
-    aes(color = region_label),
-    size = 3.2
+    aes(x = q75),
+    size = 5.8,
+    color = "#1E4F8C",
+    fill = "#1E4F8C",
+    shape = 21,
+    stroke = 1.0
   ) +
-  
-  # fixed right value labels
+  geom_text(
+    aes(x = q25, label = "Q25"),
+    nudge_y = -0.23,
+    color = "#6FA0CF",
+    size = 3.5,
+    fontface = "bold"
+  ) +
+  geom_text(
+    aes(x = q75, label = "Q75"),
+    nudge_y = -0.23,
+    color = "#1E4F8C",
+    size = 3.5,
+    fontface = "bold"
+  ) +
   geom_label(
-    data = coef_plot_dat,
-    aes(x = label_x, y = region_label, label = sprintf("%.2f", estimate)),
-    inherit.aes = FALSE,
-    size = 4.9,
+    aes(x = q75 - 0.10, label = paste0("Gap=", sprintf("%.2f", qdiff))),
+    hjust = 1,
+    size = 4.2,
     fontface = "bold",
-    fill = alpha("white", 0.98),
+    fill = alpha("white", 0.95),
     color = "#374151",
-    label.size = 0,
-    label.padding = unit(0.17, "lines"),
-    hjust = 1
+    label.size = 0
   ) +
-  
-  scale_fill_manual(values = coef_palette, guide = "none") +
-  scale_color_manual(values = coef_palette, guide = "none") +
   scale_x_continuous(
-    limits = c(0, xmax_plot),
-    breaks = c(0, 2, 4, 6, 8),
-    expand = expansion(mult = c(0, 0))
+    limits = c(min(coef_plot_dat$q25, na.rm = TRUE) - 0.2, xmax_plot),
+    breaks = pretty_breaks(5)
   ) +
   labs(
-    title = "Estimated Coefficients",
-    subtitle = "Effect of parental SES on child ISEI",
-    x = "Coefficient estimate",
+    title = "Q25 vs Q75 by Region",
+    subtitle = "Dumbbell length = quantile gap (Q75 - Q25)",
+    x = "Parental SES coefficient",
     y = NULL
   ) +
   theme_minimal(base_size = 13) +
@@ -481,8 +470,9 @@ p_coef_final <- ggplot(coef_plot_dat, aes(x = estimate, y = region_label)) +
     axis.text.y = element_text(size = 20, color = "#2F3540"),
     axis.text.x = element_text(size = 12, color = "#4B5563"),
     axis.title.x = element_text(size = 14, margin = margin(t = 10)),
-    panel.grid = element_blank(),
-    axis.line = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = "#E2E8F0", linewidth = 0.7),
     plot.margin = margin(30, 25, 10, 0)
   )
 

@@ -3,6 +3,8 @@
 * Output:
 *   Table 7-1. Main mechanism results
 *   Table 7-2. Validation and robustness of mechanism analysis
+* First Updated on March 30th
+* Latest Updated on April 14th
 ********************************************************************************
 
 clear all
@@ -306,6 +308,81 @@ program define med_generic, rclass
     return scalar indirect = A*B
 end
 
+*-------------------------------
+* 10b. Quantile-based mediation program
+*-------------------------------
+capture program drop med_qreg
+program define med_qreg, rclass
+    syntax , XVAR(name) YVAR(name) MVAR(name) QVAL(real) CTRLS(string) CMISS(string) [MINN(integer 50)]
+
+    local cmiss2 : subinstr local cmiss " " ", ", all
+
+    tempvar touse
+    quietly gen byte `touse' = !missing(`xvar', `yvar', `mvar', `cmiss2')
+
+    quietly count if `touse'
+    return scalar N = r(N)
+
+    if r(N) < `minn' {
+        return scalar a        = .
+        return scalar b        = .
+        return scalar direct   = .
+        return scalar total    = .
+        return scalar indirect = .
+        exit
+    }
+
+    quietly summarize `mvar' if `touse'
+    if missing(r(sd)) | r(sd)==0 {
+        return scalar a        = .
+        return scalar b        = .
+        return scalar direct   = .
+        return scalar total    = .
+        return scalar indirect = .
+        exit
+    }
+
+    capture quietly regress `mvar' `xvar' `ctrls' if `touse'
+    if _rc {
+        return scalar a        = .
+        return scalar b        = .
+        return scalar direct   = .
+        return scalar total    = .
+        return scalar indirect = .
+        exit
+    }
+    scalar A = _b[`xvar']
+
+    capture quietly qreg `yvar' `xvar' `mvar' `ctrls' if `touse', q(`qval')
+    if _rc {
+        return scalar a        = .
+        return scalar b        = .
+        return scalar direct   = .
+        return scalar total    = .
+        return scalar indirect = .
+        exit
+    }
+    scalar B = _b[`mvar']
+    scalar D = _b[`xvar']
+
+    capture quietly qreg `yvar' `xvar' `ctrls' if `touse', q(`qval')
+    if _rc {
+        return scalar a        = .
+        return scalar b        = .
+        return scalar direct   = .
+        return scalar total    = .
+        return scalar indirect = .
+        exit
+    }
+    scalar T = _b[`xvar']
+
+    return scalar a        = A
+    return scalar b        = B
+    return scalar direct   = D
+    return scalar total    = T
+    return scalar indirect = A*B
+end
+
 ********************************************************************************
 * PART I. TABLE 7-1 MAIN MECHANISM RESULTS
 ********************************************************************************
@@ -405,14 +482,11 @@ format N %9.0f
 format a b direct total indirect lb_indirect ub_indirect lb_direct ub_direct lb_total ub_total pm_share %9.4f
 
 sort group mediator
-save "${OUT}\tab\7_1_main_mechanism_results.dta", replace
 export delimited using "${OUT}\tab\7_1_main_mechanism_results.csv", replace
 
 *-------------------------------
 * Table 7-1: publication-style display
 *-------------------------------
-use "${OUT}\tab\7_1_main_mechanism_results.dta", clear
-
 preserve
 keep if !missing(indirect)
 drop if N < 50
@@ -477,6 +551,95 @@ putdocx text ("Significance stars are based on Z-scores back-calculated from boo
 putdocx text ("Share is the mediated proportion, calculated as indirect effect divided by total effect."), italic
 
 putdocx save "${OUT}\tab\7_1_main_mechanism_results.docx", replace
+restore
+
+*-------------------------------
+* Table 7-1b: Largest mediator by SES class (quantile class)
+*-------------------------------
+use `maindata', clear
+quietly rebuild_parent_ses
+
+local class_qs "25 50 75"
+tempfile qclassres
+postfile hqclass ///
+    str18 class ///
+    byte q ///
+    str32 mediator ///
+    str60 mlabel ///
+    double N a b direct total indirect abs_indirect ///
+    using `qclassres', replace
+
+foreach qq of local class_qs {
+    local qv = `qq'/100
+    local cname = "Q`qq'"
+    if `qq' == 25 local cname = "Lower class (Q25)"
+    if `qq' == 50 local cname = "Middle class (Q50)"
+    if `qq' == 75 local cname = "Upper class (Q75)"
+
+    foreach m of local med_use {
+        quietly get_en_label `m'
+        local lab "`r(lab)'"
+
+        quietly med_qreg, ///
+            xvar(parent_ses_pca) yvar(child_isei) mvar(`m') qval(`qv') ///
+            ctrls("`ctrl_base'") cmiss("`cmiss_base'")
+
+        local N0        = r(N)
+        local a0        = r(a)
+        local b0        = r(b)
+        local direct0   = r(direct)
+        local total0    = r(total)
+        local indirect0 = r(indirect)
+        local absind0   = .
+        if !missing(`indirect0') local absind0 = abs(`indirect0')
+
+        post hqclass ("`cname'") (`qq') ("`m'") ("`lab'") ///
+            (`N0') (`a0') (`b0') (`direct0') (`total0') (`indirect0') (`absind0')
+    }
+}
+postclose hqclass
+
+use `qclassres', clear
+gsort class -abs_indirect mediator
+export delimited using "${OUT}\tab\7_1b_quantile_class_mediation_all.csv", replace
+
+preserve
+keep if !missing(abs_indirect)
+gsort q -abs_indirect mediator
+by q: keep if _n == 1
+sort q
+format N %9.0f
+format a b direct total indirect abs_indirect %9.4f
+export delimited using "${OUT}\tab\7_1b_quantile_class_top_mediator.csv", replace
+
+putdocx clear
+putdocx begin, pagesize(A4) font("Times New Roman", 10)
+
+putdocx paragraph, halign(center)
+putdocx text ("Largest mediator by SES class (quantile mediation)"), bold
+
+putdocx paragraph
+putdocx table tab1b = data(class q mlabel indirect abs_indirect N), ///
+    varnames border(all, nil)
+
+putdocx table tab1b(1,.), border(top, single, black, 1.2pt)
+putdocx table tab1b(1,.), border(bottom, single, black, 0.8pt)
+count
+local row_count1b = r(N) + 1
+putdocx table tab1b(`row_count1b',.), border(bottom, single, black, 1.2pt)
+
+putdocx table tab1b(1,.), bold
+putdocx table tab1b(.,1/3), halign(left)
+putdocx table tab1b(.,4/6), halign(center)
+putdocx table tab1b(.,.), font("Times New Roman", 9)
+
+putdocx paragraph
+putdocx paragraph, halign(left)
+putdocx text ("Notes: "), italic bold
+putdocx text ("Class is defined by child ISEI conditional quantiles (Q25, Q50, Q75). "), italic
+putdocx text ("The largest mediator is selected by the absolute indirect effect |a*b| within each class."), italic
+
+putdocx save "${OUT}\tab\7_1b_quantile_class_top_mediator.docx", replace
 restore
 
 ********************************************************************************
@@ -743,14 +906,11 @@ label var Nspec             "N / spec"
 label var Main_result       "Main result"
 label var Additional_result "Additional result"
 
-save "${OUT}\tab\7_2_validation_robustness_display.dta", replace
 export delimited using "${OUT}\tab\7_2_validation_robustness_display.csv", replace
 
 *============================================================*
 * Table 7-2: export publication-style Word table
 *============================================================*
-use "${OUT}\tab\7_2_validation_robustness_display.dta", clear
-
 count
 local row_count = r(N) + 1
 

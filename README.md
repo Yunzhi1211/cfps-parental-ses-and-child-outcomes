@@ -22,15 +22,7 @@ R scripts and related materials used for poster figures, visualization, and supp
 
 ## Data
 
-Raw data are not included in this repository.
-
-This is because:
-
-1. some files are too large for GitHub;
-2. the underlying data may be subject to access restrictions;
-3. this repository is intended to share code and project structure rather than redistribute raw datasets.
-
-Researchers who wish to replicate the analysis should obtain the relevant data through the proper official channels and configure local file paths accordingly.
+Raw data are not included in this repository. This is because some files are too large for GitHub and the underlying data may be subject to access restrictions.
 
 ## Reproducibility note
 
@@ -47,12 +39,16 @@ The poster and paper draft are still under revision, and some materials may be i
 
 We apologize for any inconvenience and appreciate your understanding.
 
-For a short status note, please see [`NOTICE_work_in_progress.md`](NOTICE_work_in_progress.md).
+## Team and contact
 
-## License
+Project team members:
 
-Please add a license here if you wish to make the repository openly reusable.
+- Haiyun Shi — u3661501@connect.hku.hk
+- Yaru Yang — u3661510@connect.hku.hk
+- Yunzhi Jiang — jiangyunzhi@connect.hku.hk
+- Chao Huang — u3665987@connect.hku.hk
 
-## Contact
+For any questions or comments regarding this repository, please feel free to contact:
 
-For questions regarding this repository, please contact the repository owner.
+- Yunzhi Jiang — Yunzhi.j@foxmial.com
+

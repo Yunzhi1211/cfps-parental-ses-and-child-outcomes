@@ -1,5 +1,6 @@
 # Intergenerational Mobility in China: A CFPS Panel Study of Parental SES and Child Occupational Outcomes
 
+[English](README.md) | [简体中文](README_zh.md)
 
 ---
 

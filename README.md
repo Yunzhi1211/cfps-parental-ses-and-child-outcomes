@@ -148,14 +148,14 @@ The R script visualizes sample attrition across selection steps with:
 
 | Directory | Key Script | Output Type |
 |-----------|-----------|-------------|
-| **1_research_question_funnel_chart/** | `1_research_question_funnel_chart.R` | Sample flow funnel (ggplot2) |
-| **2_keyfindings_chord/** | `2_keyfindings_chord.R` | Observed-to-expected chord (circlize) |
+| **1_research_question_funnel_chart/** | `1_research_question_funnel_chart.R` | Sample flow funnel |
+| **2_keyfindings_chord/** | `2_keyfindings_chord.R` | Observed-to-expected chord |
 | **2_keyfindings_mapcoef/** | `2_keyfindings_mapcoef.R` | Geographic coefficient variation |
 | **2_keyfindings_yearcoef/** | `2_keyfindings_yearcoef.R` | Temporal trend coefficients |
-| **3_mechanism_robustness/** | `3_mechanism_robustness.R` | Mediation + robustness visualizations |
-| **3_mechanism_sun/** | `3_mechanism_sun.R` | Sunburst decomposition of pathways |
-| **3_mechanism_three_generation/** | `3_mechanism_three_generation.R` | Intergenerational flow plots |
-| **4_conclusion_bibliometric_analysis/** | `4_conclusion_bibliometric_analysis.R` | Literature landscape analysis |
+| **3_mechanism_sun/** | `3_mechanism_sun.R` | Mechanism decomposition |
+| **4_further_analysis_three_generation/** | `4_further_analysis_three_generation.R` | Grandparent effects |
+| **4_further_analysis_global_mobility/** | `5_global_mobility_map.R` / `10_global_mobility_split_narrow_figures.R` | Global mobility benchmark figures |
+| **5_conclusion_bibliometric_analysis/** | `5_conclusion_bibliometric_analysis.R` | Bibliometric analysis |
 
 ---
 

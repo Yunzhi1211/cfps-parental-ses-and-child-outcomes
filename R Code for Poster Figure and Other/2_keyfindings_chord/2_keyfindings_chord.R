@@ -375,14 +375,14 @@ out_file <- file.path(out_dir, "Figure_ObservedExpected_Mobility_Chord.png")
 
 png(
   filename = out_file,
-  width = 6200,
-  height = 3800,
-  res = 320
+  width = 9200,
+  height = 5200,
+  res = 200
 )
 
 layout(
   matrix(c(1, 2), nrow = 1),
-  widths = c(2.95, 1.35)
+  widths = c(3.0, 1.4)
 )
 
 ############################################################
@@ -390,7 +390,7 @@ layout(
 ############################################################
 
 par(
-  mar = c(2, 2, 4, 1),
+  mar = c(1, 1, 4, 0),
   xpd = NA
 )
 
@@ -400,8 +400,8 @@ circos.par(
   gap.after = gap_after,
   track.margin = c(0.004, 0.004),
   cell.padding = c(0, 0, 0, 0),
-  canvas.xlim = c(-1.34, 1.34),
-  canvas.ylim = c(-1.24, 1.24)
+  canvas.xlim = c(-1.05, 1.05),
+  canvas.ylim = c(-1.00, 1.00)
 )
 
 chordDiagram(
@@ -414,8 +414,8 @@ chordDiagram(
   link.lwd = flow_df$link_lwd,
   annotationTrack = "grid",
   preAllocateTracks = list(
-    list(track.height = 0.075),
-    list(track.height = 0.11)
+    list(track.height = 0.11),
+    list(track.height = 0.16)
   ),
   directional = 0,
   link.sort = TRUE,
@@ -459,7 +459,7 @@ if (length(ses_existing) > 0) {
     col = adjustcolor(origin_band_col, alpha.f = 0.98),
     border = NA,
     text = "Origin",
-    cex = 1.22,
+    cex = 5.50,
     text.col = "white",
     niceFacing = FALSE,
     facing = "bending.inside",
@@ -474,7 +474,7 @@ if (length(egp_existing) > 0) {
     col = adjustcolor(dest_band_col, alpha.f = 0.98),
     border = NA,
     text = "Destination",
-    cex = 1.06,
+    cex = 5.00,
     text.col = "white",
     niceFacing = FALSE,
     facing = "bending.inside",
@@ -522,7 +522,7 @@ circos.trackPlotRegion(
         facing = "bending.inside",
         niceFacing = FALSE,
         adj = c(0.5, 0.5),
-        cex = 0.86,
+        cex = 3.60,
         col = "white",
         font = 2
       )
@@ -534,7 +534,7 @@ circos.trackPlotRegion(
         facing = "clockwise",
         niceFacing = TRUE,
         adj = c(0.5, 0.5),
-        cex = 1.12,
+        cex = 4.00,
         col = "white",
         font = 2
       )
@@ -544,9 +544,9 @@ circos.trackPlotRegion(
 
 title(
   "Observed-to-Expected Mobility Flows by Parental SES",
-  cex.main = 1.78,
+  cex.main = 4.50,
   font.main = 2,
-  line = 1.1
+  line = 2.0
 )
 
 circos.clear()
@@ -556,7 +556,7 @@ circos.clear()
 ############################################################
 
 par(
-  mar = c(2, 1, 4, 3),
+  mar = c(2, 0.5, 4, 2),
   xpd = NA
 )
 
@@ -565,7 +565,7 @@ plot.window(xlim = c(0, 1), ylim = c(0, 1))
 
 rect(
   xleft = 0.05,
-  ybottom = 0.08,
+  ybottom = 0.02,
   xright = 0.97,
   ytop = 0.92,
   border = "#1F4E79",
@@ -577,7 +577,7 @@ text(
   y = 0.88,
   labels = "EGP destination classes",
   adj = c(0.5, 0.5),
-  cex = 1.50,
+  cex = 4.80,
   font = 2,
   col = "#1F4E79"
 )
@@ -610,16 +610,16 @@ for (i in seq_along(legend_order)) {
     y = legend_y[i],
     labels = egp_short[k],
     adj = c(0, 0.5),
-    cex = 1.28,
+    cex = 4.20,
     col = "#222222"
   )
   
   text(
-    x = 0.30,
+    x = 0.22,
     y = legend_y[i],
     labels = egp_full[k],
     adj = c(0, 0.5),
-    cex = 1.22,
+    cex = 4.00,
     col = "#222222"
   )
   
@@ -628,20 +628,20 @@ for (i in seq_along(legend_order)) {
     y = legend_y[i],
     labels = pct_val,
     adj = c(1, 0.5),
-    cex = 1.22,
+    cex = 4.00,
     col = "#222222"
   )
 }
 
 # Link color legend
-segments(0.32, 0.185, 0.40, 0.185, col = "#C0392B", lwd = 5)
-text(0.58, 0.185, "Observed > expected", adj = c(0.5, 0.5), cex = 0.86, col = "#444444")
+segments(0.25, 0.185, 0.36, 0.185, col = "#C0392B", lwd = 10)
+text(0.62, 0.185, "Observed > expected", adj = c(0.5, 0.5), cex = 3.50, col = "#444444")
 
-segments(0.32, 0.155, 0.40, 0.155, col = "#2166AC", lwd = 5)
-text(0.58, 0.155, "Observed < expected", adj = c(0.5, 0.5), cex = 0.86, col = "#444444")
+segments(0.25, 0.130, 0.36, 0.130, col = "#2166AC", lwd = 10)
+text(0.62, 0.130, "Observed < expected", adj = c(0.5, 0.5), cex = 3.50, col = "#444444")
 
-segments(0.32, 0.125, 0.40, 0.125, col = "#B8CFE3", lwd = 5)
-text(0.58, 0.125, "Close to expected", adj = c(0.5, 0.5), cex = 0.86, col = "#444444")
+segments(0.25, 0.075, 0.36, 0.075, col = "#B8CFE3", lwd = 10)
+text(0.62, 0.075, "Close to expected", adj = c(0.5, 0.5), cex = 3.50, col = "#444444")
 
 
 dev.off()

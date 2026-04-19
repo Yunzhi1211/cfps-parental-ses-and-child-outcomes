@@ -151,10 +151,11 @@ R 脚本通过以下方式可视化样本损耗：
 | **2_keyfindings_chord/** | `2_keyfindings_chord.R` | 观测-预期弦图 (circlize) |
 | **2_keyfindings_mapcoef/** | `2_keyfindings_mapcoef.R` | 地理系数变异图 |
 | **2_keyfindings_yearcoef/** | `2_keyfindings_yearcoef.R` | 时间趋势系数图 |
-| **3_mechanism_robustness/** | `3_mechanism_robustness.R` | 中介与稳健性可视化 |
+| **0_unused_mechanism_robustness/** | `0_unused_mechanism_robustness.R` | 已归档的稳健性图形脚本 |
 | **3_mechanism_sun/** | `3_mechanism_sun.R` | 路径分解旭日图 |
-| **3_mechanism_three_generation/** | `3_mechanism_three_generation.R` | 代际流向图 |
-| **4_conclusion_bibliometric_analysis/** | `4_conclusion_bibliometric_analysis.R` | 文献景观分析 |
+| **4_further_analysis_three_generation/** | `4_further_analysis_three_generation.R` | 三代效应与祖辈影响图 |
+| **4_further_analysis_global_mobility/** | `5_global_mobility_map.R` / `10_global_mobility_split_narrow_figures.R` | 全球教育流动与 cohort 对比图 |
+| **5_conclusion_bibliometric_analysis/** | `5_conclusion_bibliometric_analysis.R` | 文献景观分析 |
 
 ---
 

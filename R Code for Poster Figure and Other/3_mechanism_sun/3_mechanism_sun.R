@@ -319,9 +319,9 @@ p_q <- ggplot(plot_main, aes(x = as.numeric(class_label), y = abs_indirect, colo
   theme_minimal(base_size = 32) +
   theme(
     legend.position = "none",
-    axis.text.x = element_text(face = "bold", size = 34, color = "#123A63", margin = margin(t = 10)),
-    axis.text.y = element_text(face = "bold", size = 30, color = "#1E3A5F"),
-    axis.title.y = element_text(face = "bold", size = 28, color = "#1E3A5F"),
+    axis.text.x = element_text(face = "bold", size = 22, color = "#123A63", margin = margin(t = 10)),
+    axis.text.y = element_text(face = "bold", size = 20, color = "#1E3A5F"),
+    axis.title.y = element_text(face = "bold", size = 20, color = "#1E3A5F"),
     plot.title = element_text(face = "bold", size = 40, hjust = 0.5, color = "#143A5A"),
     plot.subtitle = element_text(size = 26, hjust = 0.5, margin = margin(b = 20), color = "#2F5D7C"),
     panel.grid.major.x = element_line(color = "#E5EFF8", linewidth = 0.8),

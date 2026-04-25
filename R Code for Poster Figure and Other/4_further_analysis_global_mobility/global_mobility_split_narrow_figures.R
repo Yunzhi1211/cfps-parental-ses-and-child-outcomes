@@ -214,12 +214,8 @@ p_cohort <- ggplot(trend_small, aes(x = cohort, y = beta, color = group, group =
 # Save
 ############################################################
 
-map_file <- file.path(base_dir, "Figure_Global_Mobility_Map_Regular.png")
-cohort_file <- file.path(base_dir, "Figure_Global_Mobility_Cohort_Tall.png")
+map_file <- "Figure_Global_Mobility_Map_Regular.png"
+cohort_file <- "Figure_Global_Mobility_Cohort_Banner.png"
 
 ggsave(map_file, p_map, width = 6.2, height = 4.8, dpi = 420, bg = "white")
-ggsave(cohort_file, p_cohort, width = 3.4, height = 6.6, dpi = 420, bg = "white")
-
-cat("\n=== Done ===\n")
-cat("Map:", map_file, "\n")
-cat("Cohort:", cohort_file, "\n")
+ggsave(cohort_file, p_cohort, width = 6.5, height = 3.0, dpi = 420, bg = "white")

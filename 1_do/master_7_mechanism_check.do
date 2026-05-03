@@ -484,74 +484,7 @@ format a b direct total indirect lb_indirect ub_indirect lb_direct ub_direct lb_
 sort group mediator
 export delimited using "${OUT}\tab\7_1_main_mechanism_results.csv", replace
 
-*-------------------------------
-* Table 7-1: publication-style display
-*-------------------------------
-preserve
-keep if !missing(indirect)
-drop if N < 50
 
-foreach v in indirect direct total {
-    capture drop se_`v' z_`v' stars_`v' `v'_star
-    gen se_`v' = (ub_`v' - lb_`v') / 3.92 if !missing(lb_`v', ub_`v')
-    gen z_`v'  = abs(`v' / se_`v') if !missing(se_`v') & se_`v' > 0
-
-    gen str3 stars_`v' = ""
-    replace stars_`v' = "*"   if z_`v' >= 1.645
-    replace stars_`v' = "**"  if z_`v' >= 1.96
-    replace stars_`v' = "***" if z_`v' >= 2.576
-
-    gen str16 `v'_star = string(`v', "%9.3f") + stars_`v' if !missing(`v')
-}
-
-capture drop pm_share_pct
-gen str12 pm_share_pct = string(pm_share*100, "%9.1f") + "%" if !missing(pm_share)
-
-keep group mlabel N indirect_star direct_star total_star pm_share_pct
-sort group mlabel
-by group: replace group = "" if _n > 1
-
-rename group         Group
-rename mlabel        Mediator
-rename N             Obs
-rename indirect_star Indirect
-rename direct_star   Direct
-rename total_star    Total
-rename pm_share_pct  Share
-
-count
-local row_count = r(N) + 1
-
-putdocx clear
-putdocx begin, pagesize(A4) font("Times New Roman", 10)
-
-putdocx paragraph, halign(center)
-putdocx text ("Mediation results: parental SES and child occupational status"), bold
-
-putdocx paragraph
-
-putdocx table tab1 = data(Group Mediator Obs Indirect Direct Total Share), ///
-    varnames border(all, nil)
-
-putdocx table tab1(1,.), border(top, single, black, 1.2pt)
-putdocx table tab1(1,.), border(bottom, single, black, 0.8pt)
-putdocx table tab1(`row_count',.), border(bottom, single, black, 1.2pt)
-
-putdocx table tab1(1,.), bold
-putdocx table tab1(.,1/2), halign(left)
-putdocx table tab1(.,3/7), halign(center)
-putdocx table tab1(.,.), font("Times New Roman", 9)
-
-putdocx paragraph
-putdocx paragraph, halign(left)
-putdocx text ("Notes: "), italic bold
-putdocx text ("Entries report coefficient estimates only. "), italic
-putdocx text ("* p < 0.1, ** p < 0.05, *** p < 0.01. "), italic
-putdocx text ("Significance stars are based on Z-scores back-calculated from bootstrap 95% confidence intervals. "), italic
-putdocx text ("Share is the mediated proportion, calculated as indirect effect divided by total effect."), italic
-
-putdocx save "${OUT}\tab\7_1_main_mechanism_results.docx", replace
-restore
 
 *-------------------------------
 * Table 7-1b: Largest mediator by SES class (quantile class)
